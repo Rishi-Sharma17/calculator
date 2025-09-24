@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>suiiii calculator</title>
+    <script src="https://unpkg.com/tone@14.7.58/build/Tone.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        :root{ --bg:#0b1020; --panel:#0f1724; --text:#e6eef8; --accent:#4ea8ff; --muted:rgba(230,238,248,0.7); }
+        *{box-sizing:border-box;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;}
+        body{background:var(--bg); color:var(--text); margin:0; padding:24px; display:flex; align-items:flex-start; justify-content:center; min-height:100vh;}
+        .card{width:100%; max-width:760px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:14px; padding:20px; box-shadow:0 10px 30px rgba(2,8,23,0.6); border:1px solid rgba(255,255,255,0.02);}
+        h1{margin:0 0 12px 0; font-size:20px;}
+        label{display:block; margin:10px 0 6px 0; color:var(--muted);}
+        input[type="text"], textarea{width:100%; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:var(--text); font-size:16px;}
+        textarea{min-height: 80px;}
+        .btn{display:inline-block; padding:10px 14px; border-radius:10px; background:var(--accent); color:#061022; border:none; font-weight:700; cursor:pointer; box-shadow:0 6px 18px rgba(78,168,255,0.12);}
+        .op-btn{padding:10px 14px; border-radius:10px; background:transparent; color:var(--text); border:1px solid rgba(255,255,255,0.04); font-weight:700; cursor:pointer; min-width:58px; font-size:18px;}
+        .op-btn.disabled{opacity:0.45; cursor:not-allowed;}
+        .op-btn.selected{background:var(--accent); color:#061022; border-color:transparent;}
+        .note{font-size:14px; margin-top:6px; color:var(--muted);}
+        .result{margin-top:14px; padding:14px; border-radius:10px; background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); font-weight:700; font-size:16px; min-height:36px; transition:all 0.3s ease;}
+        .footer{margin-top:18px; font-size:13px; color:var(--muted);}
+        .controls{display:flex; gap:8px; margin-top:12px; align-items:center;}
+        .top-row{display:flex; gap:12px; align-items:center;}
+        @media (max-width:600px){body{padding:12px}.card{padding:16px}.op-btn{min-width:48px; padding:12px}.btn{padding:10px 12px}}
+        .pop-overlay{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg, rgba(2,6,23,0.6), rgba(2,6,23,0.85)); z-index:40; opacity:0; visibility:hidden; transition:opacity 0.3s ease;}
+        .pop-overlay.visible{opacity:1; visibility:visible;}
+        .pop-card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:20px 24px; border-radius:12px; border:1px solid rgba(255,255,255,0.03); max-width:560px; text-align:center;}
+        .pop-text{font-size:20px; font-weight:800; margin:8px 0; opacity:0; transition:all 220ms ease;}
+        .pop-text.show{opacity:1;}
+        .inline-btn{margin-top:8px;}
+        .hidden{display:none;}
+        .feedback-item {
+            background: rgba(255,255,255,0.02);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body class="dark">
+<div class="card" id="app">
+    <div class="top-row">
+        <h1>suiiii calculator</h1>
+        <button id="musicToggleBtn" class="btn" style="background:transparent; color:var(--accent); border:1px solid rgba(255,255,255,0.04); font-size:12px; margin-left:auto;">Music Off</button>
+    </div>
+    <div id="startOverlay" class="pop-overlay visible">
+        <div class="pop-card">
+            <div class="pop-text show">Welcome — press Enter to start</div>
+            <div style="margin-top:12px"><button class="btn inline-btn" id="startBtn">Enter</button></div>
+        </div>
+    </div>
+
+    <div id="mainContent" class="hidden">
+        <label>bachoo pehla number likho.... 😋</label>
+        <div style="display:flex; gap:8px; align-items:center">
+            <input id="num1" type="text" inputmode="decimal" placeholder="Example: 12 or 3.14">
+            <button class="btn hidden" id="ok1">OK</button>
+        </div>
+        <label style="margin-top:12px">bachoo ab dusra number likho....samosa khake 😋😋</label>
+        <div style="display:flex; gap:8px; align-items:center">
+            <input id="num2" type="text" inputmode="decimal" placeholder="Example: 5 or 2.5">
+            <button class="btn hidden" id="ok2">OK</button>
+        </div>
+        <label style="margin-top:12px">Operator — select karo</label>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+            <button class="op-btn disabled" data-op="+">+</button>
+            <button class="op-btn disabled" data-op="-">-</button>
+            <button class="op-btn disabled" data-op="*">×</button>
+            <button class="op-btn disabled" data-op="/">÷</button>
+        </div>
+        <div class="controls">
+            <button class="btn disabled" id="calcBtn">Calculate (Enter)</button>
+            <button class="btn" id="clearBtn" style="background:transparent; color:var(--accent); border:1px solid rgba(255,255,255,0.04)">Clear (Esc)</button>
+        </div>
+        <div id="output" class="result small">Result will appear here — full precision</div>
+    </div>
+    
+    <div class="footer" style="margin-top:14px">
+        <div>bachho mja aaya to channel subscribe krdo😁😁</div>
+        <div>aur haa square root,power nikalna...bgera bahut hi jldi aayenge.. to tab tak ke liye niklooooooooooooo...😋</div>
+        <div style="display:flex; gap:8px; margin-top:12px;">
+            <textarea id="feedbackTextarea" placeholder="Write your experience here..."></textarea>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+            <button class="btn" id="submitFeedbackBtn">Submit Feedback</button>
+            <button class="btn" id="viewFeedbackBtn" style="background:transparent; color:var(--accent); border:1px solid rgba(255,255,255,0.04)">View All Experiences</button>
+        </div>
+    </div>
+</div>
+<div id="popOverlay" class="pop-overlay">
+    <div class="pop-card">
+        <div id="popText" class="pop-text"></div>
+    </div>
+</div>
+<div id="feedbackOverlay" class="pop-overlay">
+    <div class="pop-card" style="max-height:80vh; overflow-y:auto; text-align:left;">
+        <h2 style="margin-bottom:12px;">Sabke Experiences</h2>
+        <div id="feedbackList"></div>
+        <div style="margin-top:12px; text-align:center;">
+            <button class="btn" onclick="document.getElementById('feedbackOverlay').classList.remove('visible');">Close</button>
+        </div>
+    </div>
+</div>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const startOverlay = document.getElementById('startOverlay');
+    const startBtn = document.getElementById('startBtn');
+    const mainContent = document.getElementById('mainContent');
+    const ok1 = document.getElementById('ok1');
+    const ok2 = document.getElementById('ok2');
+    const num1 = document.getElementById('num1');
+    const num2 = document.getElementById('num2');
+    const opBtns = document.querySelectorAll('.op-btn');
+    const calcBtn = document.getElementById('calcBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const output = document.getElementById('output');
+    const popOverlay = document.getElementById('popOverlay');
+    const popText = document.getElementById('popText');
+    const submitFeedbackBtn = document.getElementById('submitFeedbackBtn');
+    const viewFeedbackBtn = document.getElementById('viewFeedbackBtn');
+    const feedbackTextarea = document.getElementById('feedbackTextarea');
+    const feedbackList = document.getElementById('feedbackList');
+    const musicToggleBtn = document.getElementById('musicToggleBtn');
+    
+    let firstNumber, secondNumber, operatorSelected;
+    let db, auth;
+    let userId;
+    let musicIsPlaying = false;
+    let isAudioReady = false;
+
+    // Firebase ko setup kar rahe hain
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = typeof _firebase_config !== 'undefined' ? JSON.parse(_firebase_config) : {};
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+    if (Object.keys(firebaseConfig).length) {
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+        
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                console.log("User authenticated:", userId);
+            } else {
+                try {
+                    const anonUser = await signInAnonymously(auth);
+                    userId = anonUser.user.uid;
+                    console.log("Signed in anonymously:", userId);
+                } catch (error) {
+                    console.error("Anonymous sign-in failed:", error);
+                }
+            }
+        });
+
+        if (initialAuthToken) {
+            signInWithCustomToken(auth, initialAuthToken).catch((error) => {
+                console.error("Custom token sign-in failed:", error);
+            });
+        }
+    }
+
+    // Sound effects ke liye Tone.js setup
+    let clickSynth, successSynth, errorSynth, bgmSynth, bgmSequence;
+    
+    function setupAudio() {
+        if (isAudioReady) return;
+        
+        if (Tone.context.state !== 'running') {
+            Tone.start();
+        }
+        
+        clickSynth = new Tone.Synth({
+            oscillator: { type: 'square' },
+            envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
+        }).toDestination();
+        
+        successSynth = new Tone.Synth({
+            oscillator: { type: 'triangle' },
+            envelope: { attack: 0.001, decay: 0.3, sustain: 0, release: 0.1 }
+        }).toDestination();
+        
+        errorSynth = new Tone.Synth({
+            oscillator: { type: 'sawtooth' },
+            envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.2 }
+        }).toDestination();
+
+        bgmSynth = new Tone.PolySynth(Tone.Synth).toDestination();
+        bgmSynth.volume.value = -10; // Thoda sa volume kam kiya
+        
+        bgmSequence = new Tone.Sequence((time, note) => {
+            bgmSynth.triggerAttackRelease(note, "8n", time);
+        }, ["C4", ["E4", "G4"], "C5", ["G4", "E4"]], "2n").start(0);
+
+        Tone.Transport.loop = true;
+        Tone.Transport.loopEnd = '2m';
+        
+        isAudioReady = true;
+    }
+
+    function playClickSound() { if (isAudioReady) clickSynth.triggerAttackRelease("C4", "8n"); }
+    function playSuccessSound() { if (isAudioReady) successSynth.triggerAttackRelease("E5", "4n"); }
+    function playErrorSound() { if (isAudioReady) errorSynth.triggerAttackRelease("C2", "8n"); }
+    
+    // Messages ko ek sequence mein dikhane ke liye function
+    function showPopSequence(messages) {
+        if (messages.length === 0) return;
+        
+        const [message, duration] = messages.shift();
+        popText.textContent = message;
+        popText.classList.add('show');
+        popOverlay.classList.add('visible');
+
+        setTimeout(() => {
+            popOverlay.classList.remove('visible');
+            popText.classList.remove('show');
+            if (messages.length > 0) {
+                setTimeout(() => showPopSequence(messages), 500); // Thoda sa delay agle message ke liye
+            }
+        }, duration);
+    }
+
+    // Pop-up dikhane ke liye simplified function
+    function showPop(msg, duration = 2000) {
+        showPopSequence([[msg, duration]]);
+    }
+
+    function enableOpBtns(){ opBtns.forEach(b=>b.classList.remove('disabled')); }
+    function disableOpBtns(){ opBtns.forEach(b=>b.classList.add('disabled')); }
+    function clearSelections(){ opBtns.forEach(b=>b.classList.remove('selected')); }
+
+    function handleNum1Enter(){
+        playClickSound();
+        firstNumber = parseFloat(num1.value);
+        if(isNaN(firstNumber)) {
+            showPop("Number to daal, anpadh! 🥲", 2000);
+            playErrorSound();
+            return;
+        }
+        ok1.classList.add('hidden');
+        ok2.classList.remove('hidden');
+        showPop('bachoo ab dusra number likho....samosa khake 😋😋', 2000);
+        num2.focus();
+    }
+
+    function handleNum2Enter(){
+        playClickSound();
+        secondNumber = parseFloat(num2.value);
+        if(isNaN(secondNumber)) {
+            showPop("Pehle dusra number to daal 😩", 2000);
+            playErrorSound();
+            return;
+        }
+        ok2.classList.add('hidden');
+        
+        showPopSequence([
+            ['likh diye no.........??', 2000],
+            ['ha?', 2000],
+            ['to meri sakal kya dekh rhe ho ab krna kya hai +/-/*.... likho na !!🙂', 5000],
+            ['aur haa anpado divide krna hai to ÷ likhna hai\nand\nmultiply ke liye ×\nokayyy...🙄', 5000]
+        ]);
+        
+        setTimeout(() => {
+            enableOpBtns();
+            calcBtn.classList.remove('disabled');
+        }, 14000);
+    }
+
+    startBtn.addEventListener('click', ()=>{
+        playClickSound();
+        startOverlay.classList.remove('visible');
+        mainContent.classList.remove('hidden');
+        showPop('bachoo pehla number likho.... 😋', 2000);
+        ok1.classList.remove('hidden');
+        num1.focus();
+        setupAudio(); // Audio context user action se start hoga
+        Tone.Transport.start();
+        musicIsPlaying = true;
+        musicToggleBtn.textContent = 'Music On';
+    });
+
+    ok1.addEventListener('click', handleNum1Enter);
+    ok2.addEventListener('click', handleNum2Enter);
+
+    opBtns.forEach(b=>b.addEventListener('click', ()=>{
+        if(b.classList.contains('disabled')) return;
+        clearSelections();
+        b.classList.add('selected');
+        operatorSelected = b.dataset.op;
+        playClickSound();
+        showPop(Okay, ${operatorSelected} ko select kiya 😎, 1000);
+    }));
+
+    calcBtn.addEventListener('click', ()=>{
+        playClickSound();
+        if(!operatorSelected) {
+            showPop("Operator to select kar, paglu! 🙄", 2000);
+            playErrorSound();
+            return;
+        }
+        let res;
+        let finalMessage;
+        
+        if(operatorSelected === '/' && secondNumber === 0) {
+            showPop("Anpadh, zero se divide nahi karte! 😡", 3000);
+            playErrorSound();
+            return;
+        }
+
+        switch(operatorSelected){
+            case '+': 
+                res = firstNumber + secondNumber; 
+                finalMessage = oyee tumara + ka answer ${res} hai 😋;
+                break;
+            case '-': 
+                res = firstNumber - secondNumber; 
+                finalMessage = - wale ka ${res} hai;
+                break;
+            case '*': 
+                res = firstNumber * secondNumber; 
+                finalMessage = bachho multiply wale ka ${res} hai 😲;
+                break;
+            case '/': 
+                res = firstNumber / secondNumber; 
+                finalMessage = pilluuuoo divide ka answer ${res} hai... bolo "JAI MAHAKAL" 🙏;
+                break;
+        }
+        output.textContent = finalMessage;
+        playSuccessSound();
+    });
+
+    clearBtn.addEventListener('click', ()=>{ 
+        playClickSound();
+        num1.value = '';
+        num2.value = '';
+        firstNumber = null;
+        secondNumber = null;
+        operatorSelected = null;
+        output.textContent = 'Result will appear here — full precision';
+        disableOpBtns();
+        clearSelections();
+        calcBtn.classList.add('disabled');
+        ok1.classList.remove('hidden');
+        ok2.classList.add('hidden');
+        showPop("Sab clear kar diya! Chalo firse shuru karte hain 💪", 2000);
+        num1.focus();
+    });
+
+    document.addEventListener('keydown', e=>{
+        if(e.key==='Enter'){
+            if(startOverlay.classList.contains('visible')) startBtn.click();
+            else if(!ok1.classList.contains('hidden')) handleNum1Enter();
+            else if(!ok2.classList.contains('hidden')) handleNum2Enter();
+            else if(!calcBtn.classList.contains('disabled')) calcBtn.click();
+        }
+        if(e.key==='Escape') clearBtn.click();
+    });
+    
+    musicToggleBtn.addEventListener('click', () => {
+        playClickSound();
+        if(musicIsPlaying) {
+            Tone.Transport.pause();
+            musicToggleBtn.textContent = 'Music Off';
+            musicIsPlaying = false;
+        } else {
+            Tone.Transport.start();
+            musicToggleBtn.textContent = 'Music On';
+            musicIsPlaying = true;
+        }
+    });
+
+    // Feedback ko Firestore mein save karne ka function
+    submitFeedbackBtn.addEventListener('click', async () => {
+        playClickSound();
+        const feedback = feedbackTextarea.value.trim();
+        if (!feedback) {
+            showPop("Kuch to likh do, anpadh! 😡", 2000);
+            return;
+        }
+        if (!db) {
+            showPop("Database abhi connect nahi hua hai, thoda wait kar le bhai. ⏳", 3000);
+            return;
+        }
+
+        try {
+            const feedbackCollection = collection(db, artifacts/${appId}/public/data/feedback);
+            await addDoc(feedbackCollection, {
+                feedback: feedback,
+                userId: userId,
+                timestamp: new Date().toISOString()
+            });
+            showPop("Shukriya! Tumhara experience save ho gaya hai. 😊", 3000);
+            feedbackTextarea.value = '';
+        } catch (e) {
+            console.error("Error adding document: ", e);
+            showPop("Kuch error ho gaya bhai, firse try kar. 😫", 3000);
+        }
+    });
+
+    // Firestore se saare feedbacks ko fetch aur display karne ka function
+    viewFeedbackBtn.addEventListener('click', () => {
+        playClickSound();
+        if (!db) {
+            showPop("Database abhi connect nahi hua hai. ⏳", 2000);
+            return;
+        }
+        
+        feedbackList.innerHTML = '';
+        document.getElementById('feedbackOverlay').classList.add('visible');
+
+        const feedbackCollection = collection(db, artifacts/${appId}/public/data/feedback);
+        const q = query(feedbackCollection);
+
+        onSnapshot(q, (snapshot) => {
+            feedbackList.innerHTML = ''; // Har baar list ko clear karo
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const item = document.createElement('div');
+                item.className = 'feedback-item';
+                item.innerHTML = `
+                    <p style="font-weight:700; color:var(--accent);">${data.userId.substring(0, 8)}... (User ID)</p>
+                    <p style="margin-top:4px;">${data.feedback}</p>
+                `;
+                feedbackList.appendChild(item);
+            });
+        });
+    });
+</script>
+</body>
+</html>
