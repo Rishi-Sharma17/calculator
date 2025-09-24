@@ -1,4 +1,4 @@
-<!doctype html>
+ <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -134,9 +134,9 @@
     let musicIsPlaying = false;
     let isAudioReady = false;
 
-    // Firebase ko setup kar rahe hain
+    // Firebase setup
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const firebaseConfig = typeof _firebase_config !== 'undefined' ? JSON.parse(_firebase_config) : {};
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
     if (Object.keys(firebaseConfig).length) {
@@ -166,7 +166,7 @@
         }
     }
 
-    // Sound effects ke liye Tone.js setup
+    // Sound effects setup using Tone.js
     let clickSynth, successSynth, errorSynth, bgmSynth, bgmSequence;
     
     function setupAudio() {
@@ -192,7 +192,7 @@
         }).toDestination();
 
         bgmSynth = new Tone.PolySynth(Tone.Synth).toDestination();
-        bgmSynth.volume.value = -10; // Thoda sa volume kam kiya
+        bgmSynth.volume.value = -10;
         
         bgmSequence = new Tone.Sequence((time, note) => {
             bgmSynth.triggerAttackRelease(note, "8n", time);
@@ -208,7 +208,6 @@
     function playSuccessSound() { if (isAudioReady) successSynth.triggerAttackRelease("E5", "4n"); }
     function playErrorSound() { if (isAudioReady) errorSynth.triggerAttackRelease("C2", "8n"); }
     
-    // Messages ko ek sequence mein dikhane ke liye function
     function showPopSequence(messages) {
         if (messages.length === 0) return;
         
@@ -221,12 +220,11 @@
             popOverlay.classList.remove('visible');
             popText.classList.remove('show');
             if (messages.length > 0) {
-                setTimeout(() => showPopSequence(messages), 500); // Thoda sa delay agle message ke liye
+                setTimeout(() => showPopSequence(messages), 500);
             }
         }, duration);
     }
 
-    // Pop-up dikhane ke liye simplified function
     function showPop(msg, duration = 2000) {
         showPopSequence([[msg, duration]]);
     }
@@ -236,13 +234,13 @@
     function clearSelections(){ opBtns.forEach(b=>b.classList.remove('selected')); }
 
     function handleNum1Enter(){
-        playClickSound();
         firstNumber = parseFloat(num1.value);
         if(isNaN(firstNumber)) {
             showPop("Number to daal, anpadh! 🥲", 2000);
             playErrorSound();
             return;
         }
+        playClickSound();
         ok1.classList.add('hidden');
         ok2.classList.remove('hidden');
         showPop('bachoo ab dusra number likho....samosa khake 😋😋', 2000);
@@ -250,13 +248,13 @@
     }
 
     function handleNum2Enter(){
-        playClickSound();
         secondNumber = parseFloat(num2.value);
         if(isNaN(secondNumber)) {
             showPop("Pehle dusra number to daal 😩", 2000);
             playErrorSound();
             return;
         }
+        playClickSound();
         ok2.classList.add('hidden');
         
         showPopSequence([
@@ -273,16 +271,17 @@
     }
 
     startBtn.addEventListener('click', ()=>{
+        setupAudio();
+        Tone.Transport.start();
+        musicIsPlaying = true;
+        musicToggleBtn.textContent = 'Music On';
+        
         playClickSound();
         startOverlay.classList.remove('visible');
         mainContent.classList.remove('hidden');
         showPop('bachoo pehla number likho.... 😋', 2000);
         ok1.classList.remove('hidden');
         num1.focus();
-        setupAudio(); // Audio context user action se start hoga
-        Tone.Transport.start();
-        musicIsPlaying = true;
-        musicToggleBtn.textContent = 'Music On';
     });
 
     ok1.addEventListener('click', handleNum1Enter);
@@ -294,16 +293,16 @@
         b.classList.add('selected');
         operatorSelected = b.dataset.op;
         playClickSound();
-        showPop(Okay, ${operatorSelected} ko select kiya 😎, 1000);
+        showPop(`Okay, ${operatorSelected} ko select kiya 😎`, 1000);
     }));
 
     calcBtn.addEventListener('click', ()=>{
-        playClickSound();
         if(!operatorSelected) {
             showPop("Operator to select kar, paglu! 🙄", 2000);
             playErrorSound();
             return;
         }
+        
         let res;
         let finalMessage;
         
@@ -316,19 +315,19 @@
         switch(operatorSelected){
             case '+': 
                 res = firstNumber + secondNumber; 
-                finalMessage = oyee tumara + ka answer ${res} hai 😋;
+                finalMessage = `oyee tumara + ka answer ${res} hai 😋`;
                 break;
             case '-': 
                 res = firstNumber - secondNumber; 
-                finalMessage = - wale ka ${res} hai;
+                finalMessage = `- wale ka ${res} hai`;
                 break;
             case '*': 
                 res = firstNumber * secondNumber; 
-                finalMessage = bachho multiply wale ka ${res} hai 😲;
+                finalMessage = `bachho multiply wale ka ${res} hai 😲`;
                 break;
             case '/': 
                 res = firstNumber / secondNumber; 
-                finalMessage = pilluuuoo divide ka answer ${res} hai... bolo "JAI MAHAKAL" 🙏;
+                finalMessage = `pilluuuoo divide ka answer ${res} hai... bolo "JAI MAHAKAL" 🙏`;
                 break;
         }
         output.textContent = finalMessage;
@@ -389,7 +388,7 @@
         }
 
         try {
-            const feedbackCollection = collection(db, artifacts/${appId}/public/data/feedback);
+            const feedbackCollection = collection(db, `artifacts/${appId}/public/data/feedback`);
             await addDoc(feedbackCollection, {
                 feedback: feedback,
                 userId: userId,
@@ -414,11 +413,11 @@
         feedbackList.innerHTML = '';
         document.getElementById('feedbackOverlay').classList.add('visible');
 
-        const feedbackCollection = collection(db, artifacts/${appId}/public/data/feedback);
+        const feedbackCollection = collection(db, `artifacts/${appId}/public/data/feedback`);
         const q = query(feedbackCollection);
 
         onSnapshot(q, (snapshot) => {
-            feedbackList.innerHTML = ''; // Har baar list ko clear karo
+            feedbackList.innerHTML = '';
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 const item = document.createElement('div');
